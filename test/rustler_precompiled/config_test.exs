@@ -42,6 +42,19 @@ defmodule RustlerPrecompiled.ConfigTest do
     end
   end
 
+  test "new/1 accepts a single string for targets" do
+    opts = [
+      otp_app: :rustler_precompiled,
+      module: RustlerPrecompilationExample.Native,
+      base_url:
+        "https://github.com/philss/rustler_precompilation_example/releases/download/v0.2.0",
+      version: "0.2.0-dev"
+    ]
+
+    config = Config.new(opts ++ [targets: "aarch64-unknown-linux-gnu"])
+    assert config.targets == ["aarch64-unknown-linux-gnu"]
+  end
+
   test "new/1 validates the given targets" do
     opts = [
       otp_app: :rustler_precompiled,
@@ -52,9 +65,15 @@ defmodule RustlerPrecompiled.ConfigTest do
     ]
 
     assert_raise RuntimeError,
-                 "`:targets` is required to be a list of targets supported by Rust",
+                 "`:targets` should include at least one target",
                  fn ->
-                   Config.new(opts ++ [targets: "aarch64-unknown-linux-gnu"])
+                   Config.new(opts ++ [targets: []])
+                 end
+
+    assert_raise RuntimeError,
+                 "`:targets` should include at least one target",
+                 fn ->
+                   Config.new(opts ++ [targets: nil])
                  end
 
     assert_raise RuntimeError,
@@ -90,6 +109,32 @@ defmodule RustlerPrecompiled.ConfigTest do
 
     assert config.targets == [
              "aarch64-apple-darwin",
+             "aarch64-unknown-linux-musl",
+             "x86_64-apple-darwin",
+             "x86_64-unknown-linux-gnu",
+             "x86_64-unknown-linux-musl",
+             "arm-unknown-linux-gnueabihf",
+             "aarch64-unknown-linux-gnu",
+             "x86_64-pc-windows-msvc",
+             "x86_64-pc-windows-gnu"
+           ]
+  end
+
+  test "new/1 does not duplicate targets when is appended with the same value as defaults" do
+    opts = [
+      otp_app: :rustler_precompiled,
+      module: RustlerPrecompilationExample.Native,
+      base_url:
+        "https://github.com/philss/rustler_precompilation_example/releases/download/v0.2.0",
+      version: "0.2.0-dev",
+      targets: Config.default_targets() ++ ["aarch64-unknown-linux-musl"]
+    ]
+
+    config = Config.new(opts)
+
+    assert config.targets == [
+             "aarch64-apple-darwin",
+             "aarch64-unknown-linux-musl",
              "x86_64-apple-darwin",
              "x86_64-unknown-linux-gnu",
              "x86_64-unknown-linux-musl",

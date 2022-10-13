@@ -18,6 +18,7 @@ defmodule RustlerPrecompiled.Config do
 
   @default_targets ~w(
     aarch64-apple-darwin
+    aarch64-unknown-linux-musl
     x86_64-apple-darwin
     x86_64-unknown-linux-gnu
     x86_64-unknown-linux-musl
@@ -33,7 +34,13 @@ defmodule RustlerPrecompiled.Config do
     version = Keyword.fetch!(opts, :version)
     otp_app = opts |> Keyword.fetch!(:otp_app) |> validate_otp_app!()
     base_url = opts |> Keyword.fetch!(:base_url) |> validate_base_url!()
-    targets = opts |> Keyword.get(:targets, @default_targets) |> validate_targets!()
+
+    targets =
+      opts
+      |> Keyword.get(:targets, @default_targets)
+      |> List.wrap()
+      |> Enum.uniq()
+      |> validate_targets!()
 
     %__MODULE__{
       otp_app: otp_app,
@@ -71,8 +78,6 @@ defmodule RustlerPrecompiled.Config do
     end
   end
 
-  defp validate_targets!(nil), do: raise_for_nil_field_value(:targets)
-
   defp validate_targets!([_ | _] = targets) do
     case targets -- AvailableTargets.list() do
       [] ->
@@ -87,15 +92,10 @@ defmodule RustlerPrecompiled.Config do
     end
   end
 
-  defp validate_targets!(_targets) do
-    raise "`:targets` is required to be a list of targets supported by Rust"
-  end
+  defp validate_targets!([]), do: raise("`:targets` should include at least one target")
 
-  defp raise_for_nil_field_value(field) do
-    raise "`#{inspect(field)}` is required for `RustlerPrecompiled`"
-  end
+  defp raise_for_nil_field_value(field),
+    do: raise("`#{inspect(field)}` is required for `RustlerPrecompiled`")
 
-  defp pre_release?(version) do
-    "dev" in Version.parse!(version).pre
-  end
+  defp pre_release?(version), do: "dev" in Version.parse!(version).pre
 end
